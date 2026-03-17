@@ -1,7 +1,10 @@
 import Foundation
 
-struct TaskItem: Codable, Sendable {
+struct Book: Codable, Sendable {
     let id: Int64?
     var title: String
-    var isCompleted: Bool
+    var author: String
+    var genre: String
+    var isRead: Bool
+    var rating: Int
 }

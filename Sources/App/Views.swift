@@ -1,62 +1,128 @@
-import Hummingbird
 import Foundation
 
 struct Views {
-    static func renderIndex(items: [TaskItem]) -> HTML {
-        let rows = items.map { item in
-            """
-            <article style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <span style="text-decoration: \(item.isCompleted ? "line-through" : "none")">
-                    \(item.isCompleted ? "✅" : "⭕️") \(item.title)
-                </span>
-                <form action="/toggle/\(item.id ?? 0)" method="post" style="margin: 0;">
-                    <button type="submit" class="outline secondary" style="padding: 4px 8px; font-size: 0.8rem;">
-                        \(item.isCompleted ? "Undo" : "Complete")
-                    </button>
-                </form>
-            </article>
-            """
-        }.joined()
 
-        return HTML(content: """
+    static func index(books: [Book], search: String = "") -> String {
+        var rows = ""
+
+        for book in books {
+            let status = book.isRead ? "Read" : "Not read"
+
+            let editLink = book.id != nil
+                ? "<a href=\"/edit/\(book.id!)\" role=\"button\">Edit</a>"
+                : ""
+
+            let deleteLink = book.id != nil
+                ? "<a href=\"/delete/\(book.id!)\" role=\"button\" class=\"secondary\">Delete</a>"
+                : ""
+
+            rows += """
+            <tr>
+                <td>\(book.title)</td>
+                <td>\(book.author)</td>
+                <td>\(book.genre)</td>
+                <td>\(status)</td>
+                <td>\(book.rating)/5</td>
+                <td style="display:flex; gap:10px;">\(editLink)\(deleteLink)</td>
+            </tr>
+            """
+        }
+
+        return """
         <!DOCTYPE html>
-        <html lang="en">
+        <html>
         <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Personal Library</title>
             <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-            <title>Swift Task App</title>
         </head>
-        <body class="container" style="padding-top: 2rem; max-width: 600px;">
-            <header>
-                <h1>Swift Task List</h1>
-                <p>A lightweight TO-DO List app built with Swift, Hummingbird, and SQLite.</p>
-            </header>
-            
-            <main>
-                <form action="/add" method="post" style="display: flex; gap: 10px;">
-                    <input type="text" name="title" placeholder="New task..." required style="flex-grow: 1;">
-                    <button type="submit">Add</button>
+        <body>
+            <main class="container">
+                <h1>📚 Personal Library</h1>
+                <p>Manage your books with Swift, Hummingbird and SQLite.</p>
+
+                <form method="get" action="/" style="margin-bottom: 20px;">
+                    <input type="text" name="search" placeholder="Search by title, author or genre" value="\(search)">
+                    <button type="submit">Search</button>
                 </form>
-                
-                <section>
-                    \(items.isEmpty ? "<p>No tasks yet! Add one above.</p>" : rows)
-                </section>
+
+                <form method="post" action="/add">
+                    <input type="text" name="title" placeholder="Title" required>
+                    <input type="text" name="author" placeholder="Author" required>
+                    <input type="text" name="genre" placeholder="Genre" required>
+
+                    <select name="isRead">
+                        <option value="false">Not read</option>
+                        <option value="true">Read</option>
+                    </select>
+
+                    <input type="number" name="rating" min="1" max="5" value="3" required>
+
+                    <button type="submit">Add Book</button>
+                </form>
+
+                <hr>
+
+                \(books.isEmpty ? "<p>No books found.</p>" : """
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>Genre</th>
+                            <th>Status</th>
+                            <th>Rating</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        \(rows)
+                    </tbody>
+                </table>
+                """)
             </main>
         </body>
         </html>
-        """)
+        """
     }
-}
 
-// Allows Hummingbird to return HTML strings
-struct HTML: ResponseGenerator {
-    let content: String
-    func response(from request: Request, context: some RequestContext) throws -> Response {
-        return Response(
-            status: .ok,
-            headers: [.contentType: "text/html"],
-            body: .init(byteBuffer: .init(string: content))
-        )
+    static func edit(book: Book) -> String {
+        let notReadSelected = book.isRead ? "" : "selected"
+        let readSelected = book.isRead ? "selected" : ""
+
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Edit Book</title>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+        </head>
+        <body>
+            <main class="container">
+                <h1>✏️ Edit Book</h1>
+
+                <form method="post" action="/update/\(book.id ?? 0)">
+                    <input type="text" name="title" value="\(book.title)" required>
+                    <input type="text" name="author" value="\(book.author)" required>
+                    <input type="text" name="genre" value="\(book.genre)" required>
+
+                    <select name="isRead">
+                        <option value="false" \(notReadSelected)>Not read</option>
+                        <option value="true" \(readSelected)>Read</option>
+                    </select>
+
+                    <input type="number" name="rating" min="1" max="5" value="\(book.rating)" required>
+
+                    <button type="submit">Update Book</button>
+                </form>
+
+                <p><a href="/">← Back to library</a></p>
+            </main>
+        </body>
+        </html>
+        """
     }
 }
