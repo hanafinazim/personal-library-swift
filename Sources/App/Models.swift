@@ -7,4 +7,5 @@ struct Book: Codable, Sendable {
     var genre: String
     var isRead: Bool
     var rating: Int
+    var isFavorite: Bool
 }
