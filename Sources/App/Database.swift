@@ -51,7 +51,9 @@ struct Database {
         db: Connection,
         search: String,
         minimumRating: Int?,
-        favoritesOnly: Bool
+        favoritesOnly: Bool,
+        readFilter: String,
+        sortBy: String
     ) throws -> [Book] {
         var query = books
 
@@ -68,6 +70,30 @@ struct Database {
 
         if favoritesOnly {
             query = query.filter(isFavorite == true)
+        }
+
+        switch readFilter {
+        case "read":
+            query = query.filter(isRead == true)
+        case "unread":
+            query = query.filter(isRead == false)
+        default:
+            break
+        }
+
+        switch sortBy {
+        case "title_asc":
+            query = query.order(title.asc)
+        case "title_desc":
+            query = query.order(title.desc)
+        case "rating_asc":
+            query = query.order(rating.asc)
+        case "rating_desc":
+            query = query.order(rating.desc)
+        case "favorites_first":
+            query = query.order(isFavorite.desc, title.asc)
+        default:
+            query = query.order(id.desc)
         }
 
         return try db.prepare(query).map { row in

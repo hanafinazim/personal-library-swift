@@ -10,9 +10,13 @@ func htmlResponse(_ html: String) -> Response {
     let buffer = ByteBuffer(string: html)
     return Response(
         status: .ok,
-        headers: [.contentType: "text/html"],
+        headers: [.contentType: "text/html; charset=utf-8"],
         body: .init(byteBuffer: buffer)
     )
+}
+
+func redirectResponse(to location: String) -> Response {
+    Response(status: .seeOther, headers: [.location: location])
 }
 
 func parseFormBody(_ body: String) -> [String: String] {
@@ -35,6 +39,9 @@ router.get("/") { request, _ -> Response in
     var search = ""
     var rating: Int? = nil
     var favoritesOnly = false
+    var readFilter = ""
+    var sortBy = ""
+    var message = ""
 
     if let components = URLComponents(string: uri) {
         search = components.queryItems?.first(where: { $0.name == "search" })?.value ?? ""
@@ -47,6 +54,10 @@ router.get("/") { request, _ -> Response in
             components.queryItems?.contains(where: {
                 $0.name == "favorites" && $0.value == "true"
             }) ?? false
+
+        readFilter = components.queryItems?.first(where: { $0.name == "read_status" })?.value ?? ""
+        sortBy = components.queryItems?.first(where: { $0.name == "sort" })?.value ?? ""
+        message = components.queryItems?.first(where: { $0.name == "message" })?.value ?? ""
     }
 
     do {
@@ -54,7 +65,9 @@ router.get("/") { request, _ -> Response in
             db: db,
             search: search,
             minimumRating: rating,
-            favoritesOnly: favoritesOnly
+            favoritesOnly: favoritesOnly,
+            readFilter: readFilter,
+            sortBy: sortBy
         )
 
         let stats = try Database.getStats(db: db)
@@ -65,7 +78,10 @@ router.get("/") { request, _ -> Response in
                 search: search,
                 selectedRating: rating,
                 favoritesOnly: favoritesOnly,
-                stats: stats
+                selectedReadFilter: readFilter,
+                selectedSort: sortBy,
+                stats: stats,
+                message: message
             )
         )
     } catch {
@@ -92,7 +108,7 @@ router.post("/add") { request, _ async -> Response in
             rating: Int(params["rating"] ?? "3") ?? 3
         )
 
-        return Response(status: .seeOther, headers: [.location: "/"])
+        return redirectResponse(to: "/?message=Book%20added%20successfully")
     } catch {
         return htmlResponse("<h1>Error adding book</h1>")
     }
@@ -139,7 +155,7 @@ router.post("/update/:id") { request, _ async -> Response in
             rating: Int(params["rating"] ?? "3") ?? 3
         )
 
-        return Response(status: .seeOther, headers: [.location: "/"])
+        return redirectResponse(to: "/?message=Book%20updated%20successfully")
     } catch {
         return htmlResponse("<h1>Error updating book</h1>")
     }
@@ -153,7 +169,7 @@ router.get("/mark-read/:id") { request, _ -> Response in
             try Database.markAsRead(db: db, id: bookId)
         }
 
-        return Response(status: .seeOther, headers: [.location: "/"])
+        return redirectResponse(to: "/?message=Book%20marked%20as%20read")
     } catch {
         return htmlResponse("<h1>Error marking book as read</h1>")
     }
@@ -167,7 +183,7 @@ router.get("/toggle-favorite/:id") { request, _ -> Response in
             try Database.toggleFavorite(db: db, id: bookId)
         }
 
-        return Response(status: .seeOther, headers: [.location: "/"])
+        return redirectResponse(to: "/?message=Favorite%20status%20updated")
     } catch {
         return htmlResponse("<h1>Error toggling favorite</h1>")
     }
@@ -181,7 +197,7 @@ router.get("/delete/:id") { request, _ -> Response in
             try Database.deleteBook(db: db, id: bookId)
         }
 
-        return Response(status: .seeOther, headers: [.location: "/"])
+        return redirectResponse(to: "/?message=Book%20deleted%20successfully")
     } catch {
         return htmlResponse("<h1>Error deleting book</h1>")
     }
