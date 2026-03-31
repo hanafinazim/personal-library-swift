@@ -201,5 +201,3 @@ Auteur
 
 Projet réalisé par belkacemi hanafi nazim dans le cadre d’un apprentissage Swift backend + web.
 
-
-Base URL :
